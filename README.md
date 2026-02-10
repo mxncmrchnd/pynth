@@ -5,10 +5,10 @@
 ## Features
 - reads a MIDI file input
 - able to play saw, sine, square or triangle waves
+- ADSR envelope (for now only being in code, can't be changed through arguments)
 - exports it as FLAC
 
 ## Future features
-- basic ADSR envelope
 - effects (reverb, delay)
 - realtime reading of MIDI input
 

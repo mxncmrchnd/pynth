@@ -15,5 +15,12 @@ def main():
     midi_path = os.path.abspath(args.input_midi)
     output_path = os.path.abspath(args.output_flac)
 
+    # custom ADSR, for testing purposes (will be removed when GUI will be implemented)
+    test_adsr = {
+        'attack' : 0.005,
+        'decay' : 0.1,
+        'sustain' : 0.3,
+        'release' : 0.01
+    }
     # call the synth function
-    midi_to_flac(midi_path, output_path, waveform = args.waveform)
+    midi_to_flac(midi_path, output_path, waveform = args.waveform, adsr = test_adsr)
