@@ -15,8 +15,11 @@
 
 ## How to run it
 Open a terminal in the `pynth` folder and type : 
+
 ``` pip install -e .```
+
 Then simply run : 
+
 ``` pynth input.mid output.flac ```
 
 ## Dependencies
