@@ -2,12 +2,6 @@
 import mido
 import numpy as np
 import soundfile as sf
-import os
-
-# make sure the paths are built relative to the script (temporary, for testing purposes)
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-midi_path = os.path.join(SCRIPT_DIR, "test.mid")
-output_path = os.path.join(SCRIPT_DIR, "output.flac")
 
 # constants
 SAMPLE_RATE = 44100
@@ -73,7 +67,4 @@ def midi_to_flac(midi_in, file_out) :
 
     # write to file
     sf.write(file_out, audio, SAMPLE_RATE, format="FLAC")
-    print(f"Rendered MIDI to {file_out}, containing {len(rendered_notes)}")
-
-# test
-midi_to_flac(midi_path, output_path)
+    print(f"Rendered MIDI to {file_out}, containing {len(rendered_notes)} notes")
