@@ -2,13 +2,44 @@
 import mido
 import numpy as np
 import soundfile as sf
+import os
+import argparse
+from scipy import signal
 
 # constants
 SAMPLE_RATE = 44100
 DEFAULT_TEMPO = 500000 # 120bpm, in microseconds per beat
 
 # functions
-def midi_to_flac(midi_in, file_out) : 
+## checks if MIDI input path is correct
+def check_midi_input_path(path):
+    if not os.path.isfile(path):
+        raise argparse.ArgumentTypeError(f"File not found : {path}")
+    if not path.lower().endswith(".mid"):
+        raise argparse.ArgumentTypeError("Input must be a MIDI file")
+    return path
+
+## checks if the output is valid
+def check_flac_output(path):
+    if not path.lower().endswith(".flac"):
+        raise argparse.ArgumentTypeError("Output must be a FLAC file")
+    return path
+
+## generates a waveform
+def generate_waveform(freq, t, waveform="sine"):
+    if waveform == "saw" :
+        return signal.sawtooth(2 * np.pi * freq * t)
+    elif waveform == "sine" : 
+        return np.sin(2 * np.pi * freq * t)
+    elif waveform == "square" : 
+        return signal.square(2 * np.pi * freq * t)
+    elif waveform == "triangle" : 
+        return signal.sawtooth(2 * np.pi * freq * t, width = 0.5)
+    else : 
+        raise ValueError(f"Unknown wave type : {waveform}")
+
+## reads MIDI file to numpy audio array
+def midi_to_audio(midi_in, waveform = "sine") : 
     ## read the file
     mid = mido.MidiFile(midi_in)
     ## getting timing info
@@ -45,14 +76,14 @@ def midi_to_flac(midi_in, file_out) :
     
     ## determining total duration
     duration = max(end for _, end, _, _ in rendered_notes)
-    audio = np.zeros(int(duration * SAMPLE_RATE))
+    audio = np.zeros(int(duration * SAMPLE_RATE), dtype=np.float32)
     # rendering the notes
     for start, end, note, velocity in rendered_notes:
         start_i = int(start * SAMPLE_RATE)
         end_i = int(end * SAMPLE_RATE)
         t = np.linspace(0, end - start, end_i - start_i, endpoint = False)
         freq = 440.0 * 2 ** ((note-69)/12)
-        wave = np.sin(2 * np.pi * freq * t)
+        wave = generate_waveform(freq, t, waveform)
         wave*= velocity / 127.0
         ## add a fade-in/out, to reduce clicking (10ms)
         fade_len = int(0.01 * SAMPLE_RATE)
@@ -64,7 +95,21 @@ def midi_to_flac(midi_in, file_out) :
     peak = np.max(np.abs(audio))
     if peak > 0 : 
         audio /= peak
+    
+    return audio, rendered_notes
 
-    # write to file
+## write to file
+def audio_to_flac(audio, file_out):
+    if audio is None:
+        print("No audio to write")
+        return
     sf.write(file_out, audio, SAMPLE_RATE, format="FLAC")
-    print(f"Rendered MIDI to {file_out}, containing {len(rendered_notes)} notes")
+    print(f"Rendered MIDI to {file_out}, containing {len(audio)} samples")
+
+## high level function
+def midi_to_flac(midi_in, file_out, waveform="sine") : 
+    audio, rendered_notes = midi_to_audio(midi_in, waveform = waveform)
+    if audio is None : 
+        return
+    audio_to_flac(audio, file_out)
+    print(f"File rendered to {file_out} with {len(rendered_notes)} notes")

@@ -4,11 +4,10 @@
 
 ## Features
 - reads a MIDI file input
-- plays it as a sinwave
+- able to play saw, sine, square or triangle waves
 - exports it as FLAC
 
 ## Future features
-- selection of the wave type
 - basic ADSR envelope
 - effects (reverb, delay)
 - realtime reading of MIDI input
@@ -22,7 +21,13 @@ Then simply run :
 
 ``` pynth input.mid output.flac ```
 
+It generates a sinewave by default. For other waveforms, simply run :
+
+``` pynth input.mid output.flac --waveform saw ```
+
 ## Dependencies
 - `mido`
-- `soundfile`
 - `numpy` 
+- `scipy`
+- `soundfile`
+
