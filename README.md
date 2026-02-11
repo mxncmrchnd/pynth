@@ -19,8 +19,6 @@ If you wish to run the GUI version (recommended) :
 
 ``` pynth-gui ``` and play around.
 
-![GUI screenshot](gui_screenshot.png)
-
 If you wish to use the CLI version : 
 
 ``` pynth-cli input.mid output.flac ```
