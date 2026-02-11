@@ -2,6 +2,21 @@ import numpy as np
 from scipy.signal import fftconvolve, butter, filtfilt
 from. import defaults
 
+# chorus
+def apply_chorus(audio, rate=1.5, depth=0.002, mix=0.5):
+    length = len(audio)
+    t = np.arange(length) / defaults.SAMPLE_RATE
+    lfo = np.sin(2 * np.pi * rate * t)
+    max_delay = int(depth * defaults.SAMPLE_RATE)
+    delay_samples = (lfo * max_delay).astype(int) + max_delay
+    output = np.zeros_like(audio)
+    for i in range(length):
+        delayed_idx = i - delay_samples[i]
+        if 0 <= delayed_idx < length:
+            output[i] = audio[delayed_idx]
+    result = audio * (1 - mix) + output * mix   
+    return result
+
 # delay
 def apply_delay(audio, delay_time = 0.3, feedback = 0.5, mix = 0.3):
     delay_samples = int(delay_time * defaults.SAMPLE_RATE)

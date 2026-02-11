@@ -81,6 +81,9 @@ def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None) :
     
     # effects
     if fx :
+        if 'chorus' in fx :
+            params = fx['chorus']
+            audio = effects.apply_chorus(audio, **params)
         if 'delay' in fx :
             params = fx['delay']
             audio = effects.apply_delay(audio, **params)
