@@ -84,6 +84,9 @@ def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None) :
         if 'delay' in fx :
             params = fx['delay']
             audio = effects.apply_delay(audio, **params)
+        if 'reverb' in fx:
+            params = fx['reverb']
+            audio = effects.apply_reverb(audio, **params)
     
     return audio, rendered_notes
 

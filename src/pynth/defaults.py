@@ -6,10 +6,15 @@ DEFAULT_ADSR = {
     'release': 0.3
 }
 DEFAULT_EFFECTS = {
-    'delay' : {
-        'delay_time' : 0.375,
-        'feedback' : 0.4,
-        'mix' : 0.3
+    #'delay' : {
+    #   'delay_time' : 0.375,
+    #   'feedback' : 0.4,
+    #   'mix' : 0.3
+    #},
+    'reverb':{
+        'room_size' : 0.8,
+        'damping' : 0.3,
+        'mix' : 0.5
     }
 }
 DEFAULT_TEMPO = 500000 # 120bpm, in microseconds per beat
