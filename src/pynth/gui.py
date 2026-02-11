@@ -14,7 +14,7 @@ class PynthGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Pynth - MIDI to Audio Synthesizer")
-        self.root.geometry("1000x750")
+        self.root.geometry("1300x900")
         self.root.resizable(False, False)
         
         # Variables
@@ -93,10 +93,11 @@ class PynthGUI:
         adsr_frame = ttk.LabelFrame(left_frame, text="ADSR Envelope", padding="10")
         adsr_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=5)
         
-        self.create_knob(adsr_frame, "Attack", self.attack, 0.001, 1.0, 0)
-        self.create_knob(adsr_frame, "Decay", self.decay, 0.001, 2.0, 1)
-        self.create_knob(adsr_frame, "Sustain", self.sustain, 0.0, 1.0, 2)
-        self.create_knob(adsr_frame, "Release", self.release, 0.001, 2.0, 3)
+        # Note: Using from_=max and to=min for inverted sliders
+        self.create_knob(adsr_frame, "Attack", self.attack, 1.0, 0.001, 0)
+        self.create_knob(adsr_frame, "Decay", self.decay, 2.0, 0.001, 1)
+        self.create_knob(adsr_frame, "Sustain", self.sustain, 1.0, 0.0, 2)
+        self.create_knob(adsr_frame, "Release", self.release, 2.0, 0.001, 3)
         
         # Add trace to update plot when ADSR changes
         self.attack.trace_add('write', lambda *args: self.update_adsr_plot())
@@ -117,10 +118,9 @@ class PynthGUI:
         
         self.delay_controls = ttk.Frame(delay_frame)
         self.delay_controls.grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E))
-        self.create_mini_knob(self.delay_controls, "Time (s)", self.delay_time, 0.01, 2.0, 0)
-        self.create_mini_knob(self.delay_controls, "Feedback", self.delay_feedback, 0.0, 0.9, 1)
-        self.create_mini_knob(self.delay_controls, "Mix", self.delay_mix, 0.0, 1.0, 2)
-        self.delay_controls.grid_remove()
+        self.delay_widgets = self.create_mini_knob(self.delay_controls, "Time (s)", self.delay_time, 0.01, 2.0, 0)
+        self.delay_widgets.extend(self.create_mini_knob(self.delay_controls, "Feedback", self.delay_feedback, 0.0, 0.9, 1))
+        self.delay_widgets.extend(self.create_mini_knob(self.delay_controls, "Mix", self.delay_mix, 0.0, 1.0, 2))
         
         # Reverb
         reverb_frame = ttk.Frame(effects_frame)
@@ -131,10 +131,9 @@ class PynthGUI:
         
         self.reverb_controls = ttk.Frame(reverb_frame)
         self.reverb_controls.grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E))
-        self.create_mini_knob(self.reverb_controls, "Room Size", self.reverb_room_size, 0.0, 1.0, 0)
-        self.create_mini_knob(self.reverb_controls, "Damping", self.reverb_damping, 0.0, 1.0, 1)
-        self.create_mini_knob(self.reverb_controls, "Mix", self.reverb_mix, 0.0, 1.0, 2)
-        self.reverb_controls.grid_remove()
+        self.reverb_widgets = self.create_mini_knob(self.reverb_controls, "Room Size", self.reverb_room_size, 0.0, 1.0, 0)
+        self.reverb_widgets.extend(self.create_mini_knob(self.reverb_controls, "Damping", self.reverb_damping, 0.0, 1.0, 1))
+        self.reverb_widgets.extend(self.create_mini_knob(self.reverb_controls, "Mix", self.reverb_mix, 0.0, 1.0, 2))
         
         # Chorus
         chorus_frame = ttk.Frame(effects_frame)
@@ -145,10 +144,14 @@ class PynthGUI:
         
         self.chorus_controls = ttk.Frame(chorus_frame)
         self.chorus_controls.grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E))
-        self.create_mini_knob(self.chorus_controls, "Rate (Hz)", self.chorus_rate, 0.1, 5.0, 0)
-        self.create_mini_knob(self.chorus_controls, "Depth", self.chorus_depth, 0.0001, 0.01, 1)
-        self.create_mini_knob(self.chorus_controls, "Mix", self.chorus_mix, 0.0, 1.0, 2)
-        self.chorus_controls.grid_remove()
+        self.chorus_widgets = self.create_mini_knob(self.chorus_controls, "Rate (Hz)", self.chorus_rate, 0.1, 5.0, 0)
+        self.chorus_widgets.extend(self.create_mini_knob(self.chorus_controls, "Depth", self.chorus_depth, 0.0001, 0.01, 1))
+        self.chorus_widgets.extend(self.create_mini_knob(self.chorus_controls, "Mix", self.chorus_mix, 0.0, 1.0, 2))
+        
+        # Initially disable all effect controls
+        self.set_widgets_state(self.delay_widgets, tk.DISABLED)
+        self.set_widgets_state(self.reverb_widgets, tk.DISABLED)
+        self.set_widgets_state(self.chorus_widgets, tk.DISABLED)
         
         # Buttons
         button_frame = ttk.Frame(left_frame)
@@ -177,13 +180,14 @@ class PynthGUI:
         self.canvas = FigureCanvasTkAgg(self.fig, master=viz_frame)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
     
-    def create_knob(self, parent, label, variable, min_val, max_val, column):
-        """Create a labeled slider (knob) for ADSR parameters"""
+    def create_knob(self, parent, label, variable, max_val, min_val, column):
+        """Create a labeled slider (knob) for ADSR parameters - inverted"""
         frame = ttk.Frame(parent)
         frame.grid(row=0, column=column, padx=10)
         
         ttk.Label(frame, text=label).pack()
         
+        # from_=max, to=min for inverted slider
         scale = ttk.Scale(frame, from_=max_val, to=min_val, orient=tk.VERTICAL,
                          variable=variable, length=150)
         scale.pack()
@@ -197,11 +201,13 @@ class PynthGUI:
         variable.trace_add('write', update_label)
     
     def create_mini_knob(self, parent, label, variable, min_val, max_val, column):
-        """Create a smaller horizontal slider for effect parameters"""
+        """Create a smaller horizontal slider for effect parameters
+        Returns list of widgets that can be enabled/disabled"""
         frame = ttk.Frame(parent)
         frame.grid(row=0, column=column, padx=5, pady=5)
         
-        ttk.Label(frame, text=label, width=10).pack(side=tk.LEFT)
+        label_widget = ttk.Label(frame, text=label, width=10)
+        label_widget.pack(side=tk.LEFT)
         
         scale = ttk.Scale(frame, from_=min_val, to=max_val, orient=tk.HORIZONTAL,
                          variable=variable, length=100)
@@ -213,6 +219,14 @@ class PynthGUI:
         def update_label(*args):
             value_label.config(text=f"{variable.get():.3f}")
         variable.trace_add('write', update_label)
+        
+        # Return widgets that should be enabled/disabled
+        return [label_widget, scale, value_label]
+    
+    def set_widgets_state(self, widgets, state):
+        """Enable or disable a list of widgets"""
+        for widget in widgets:
+            widget.config(state=state)
     
     def update_adsr_plot(self):
         """Update the ADSR envelope visualization"""
@@ -268,21 +282,21 @@ class PynthGUI:
     
     def toggle_delay(self):
         if self.delay_enabled.get():
-            self.delay_controls.grid()
+            self.set_widgets_state(self.delay_widgets, tk.NORMAL)
         else:
-            self.delay_controls.grid_remove()
+            self.set_widgets_state(self.delay_widgets, tk.DISABLED)
     
     def toggle_reverb(self):
         if self.reverb_enabled.get():
-            self.reverb_controls.grid()
+            self.set_widgets_state(self.reverb_widgets, tk.NORMAL)
         else:
-            self.reverb_controls.grid_remove()
+            self.set_widgets_state(self.reverb_widgets, tk.DISABLED)
     
     def toggle_chorus(self):
         if self.chorus_enabled.get():
-            self.chorus_controls.grid()
+            self.set_widgets_state(self.chorus_widgets, tk.NORMAL)
         else:
-            self.chorus_controls.grid_remove()
+            self.set_widgets_state(self.chorus_widgets, tk.DISABLED)
     
     def browse_midi(self):
         filename = filedialog.askopenfilename(
