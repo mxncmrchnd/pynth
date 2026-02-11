@@ -38,6 +38,12 @@ Example usage :
 
 ```pynth-cli input.mid output.flac --waveform square --effect chorus```
 
+## Future developments
+
+- More oscillators
+- LFO and filters
+- Removal of the CLI version (too inconvenient to use as more features get added)
+
 ## Dependencies
 - [`matplotlib`](https://matplotlib.org/)
 - [`mido`](https://mido.readthedocs.io/en/stable/)
