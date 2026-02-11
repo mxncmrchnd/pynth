@@ -15,5 +15,31 @@ def main():
     ## build the paths
     midi_path = os.path.abspath(args.input_midi)
     output_path = os.path.abspath(args.output_flac)
+    # handling the effect argument
+    if args.effect is None : fx = None
+    elif args.effect == "chorus" : 
+        fx = {
+            'chorus' : {
+                'rate' : 1.5,
+                'depth' : 0.002,
+                'mix' : 0.4
+            }
+        }
+    elif args.effect == "delay" :
+        fx = {
+            'delay' : {
+                'delay_time' : 0.375,
+                'feedback' : 0.4,
+                'mix' : 0.7
+            }
+        }
+    elif args.effect == "reverb" :
+        fx = {
+            'reverb':{
+                'room_size' : 0.8,
+                'damping' : 0.3,
+                'mix' : 0.5
+            }
+        }
     # call the synth function
-    midi.midi_to_flac(midi_path, output_path, wf = args.waveform, fx = args.effect)
+    midi.midi_to_flac(midi_path, output_path, wf = args.waveform, fx = fx)

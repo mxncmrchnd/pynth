@@ -1,4 +1,8 @@
 # pynth
+![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)
+![License](https://img.shields.io/github/license/mxncmrchnd/pynth)
+![Code Size](https://img.shields.io/github/languages/code-size/mxncmrchnd/pynth)
+
 `pynth` is a small MIDI player made in python.
 by Maxence Marchand, 2026
 
@@ -21,6 +25,8 @@ If you wish to run the GUI version (recommended) :
 
 ![GUI screenshot](screenshot.png)
 
+**IMPORTANT** The GUI relies on ```tkinter```.
+
 If you wish to use the CLI version : 
 
 ```pynth-cli input.mid output.flac```
@@ -32,10 +38,10 @@ Example usage :
 ```pynth-cli input.mid output.flac --waveform square --effect chorus```
 
 ## Dependencies
-- `matplotlib`
-- `mido`
-- `numpy` 
-- `scipy`
-- `sounddevice`
-- `soundfile`
+- [`matplotlib`](https://matplotlib.org/)
+- [`mido`](https://mido.readthedocs.io/en/stable/)
+- [`numpy`](https://numpy.org/)
+- [`scipy`](https://scipy.org/)
+- [`sounddevice`](https://python-sounddevice.readthedocs.io/en/0.5.3/)
+- [`soundfile`](https://pypi.org/project/soundfile/)
 
