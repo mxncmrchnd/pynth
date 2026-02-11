@@ -6,10 +6,11 @@
 - reads a MIDI file input
 - able to play saw, sine, square or triangle waves
 - ADSR envelope (for now only being in code, can't be changed through arguments)
+- effects (chorus, delay, reverb)
 - exports it as FLAC
 
 ## Future features
-- effects (reverb, delay)
+- GUI
 - realtime reading of MIDI input
 
 ## How to run it
