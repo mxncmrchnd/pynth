@@ -4,7 +4,7 @@ import numpy as np
 import soundfile as sf
 import os
 import argparse
-from . import defaults, envelope, waveform
+from . import defaults, effects, envelope, waveform
 
 # checks if MIDI input path is correct
 def check_midi_input_path(path):
@@ -21,7 +21,7 @@ def check_flac_output(path):
     return path
 
 # reads MIDI file to numpy audio array
-def midi_to_audio(midi_in, wf = "sine", adsr = None) : 
+def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None) : 
     if adsr is None:
         adsr = defaults.DEFAULT_ADSR
     ## read the file
@@ -79,6 +79,12 @@ def midi_to_audio(midi_in, wf = "sine", adsr = None) :
     if peak > 0 : 
         audio /= peak
     
+    # effects
+    if fx :
+        if 'delay' in fx :
+            params = fx['delay']
+            audio = effects.apply_delay(audio, **params)
+    
     return audio, rendered_notes
 
 ## write to file
@@ -90,8 +96,8 @@ def audio_to_flac(audio, file_out):
     print(f"Rendered MIDI to {file_out}, containing {len(audio)} samples")
 
 ## high level function
-def midi_to_flac(midi_in, file_out, wf="sine", adsr = None) : 
-    audio, rendered_notes = midi_to_audio(midi_in, wf = wf, adsr = adsr)
+def midi_to_flac(midi_in, file_out, wf="sine", adsr = None, fx = None) : 
+    audio, rendered_notes = midi_to_audio(midi_in, wf = wf, adsr = adsr, fx = fx)
     if audio is None : 
         return
     audio_to_flac(audio, file_out)

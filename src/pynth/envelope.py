@@ -2,7 +2,7 @@ import numpy as np
 from. import defaults
 
 # creates the envelope
-def generate_adsr(num_samples, attack, decay, sustain, release, sample_rate=defaults.SAMPLE_RATE):
+def generate_adsr(num_samples, attack, decay, sustain, release):
     if num_samples == 0:
         return np.array([]) 
     ## short notes : simple fade-in/out
@@ -11,13 +11,13 @@ def generate_adsr(num_samples, attack, decay, sustain, release, sample_rate=defa
         envelope = np.concatenate([envelope, np.linspace(1, 0, num_samples - len(envelope))])
         return envelope[:num_samples]
     
-    note_duration = num_samples / sample_rate
-    attack_samples = int(attack * sample_rate)
-    decay_samples = int(decay * sample_rate)
-    release_samples = int(release * sample_rate)   
+    note_duration = num_samples / defaults.SAMPLE_RATE
+    attack_samples = int(attack * defaults.SAMPLE_RATE)
+    decay_samples = int(decay * defaults.SAMPLE_RATE)
+    release_samples = int(release * defaults.SAMPLE_RATE)   
     ## calculates total adsr time
     total_adsr_samples = attack_samples + decay_samples + release_samples
-    total_adsr_time = total_adsr_samples / sample_rate
+    total_adsr_time = total_adsr_samples / defaults.SAMPLE_RATE
     
     ## decision threshold: if note is longer than 1.5x the ADSR time, use fixed mode
     if note_duration > total_adsr_time * 1.5:

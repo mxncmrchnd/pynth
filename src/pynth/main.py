@@ -1,7 +1,7 @@
 # libraries
 import argparse
 import os
-from . import midi
+from . import defaults, midi
 
 # main function
 def main():
@@ -15,4 +15,4 @@ def main():
     midi_path = os.path.abspath(args.input_midi)
     output_path = os.path.abspath(args.output_flac)
     # call the synth function
-    midi.midi_to_flac(midi_path, output_path, wf = args.waveform)
+    midi.midi_to_flac(midi_path, output_path, wf = args.waveform, fx = defaults.DEFAULT_EFFECTS)
