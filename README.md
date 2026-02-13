@@ -1,8 +1,8 @@
 # pynth
 ![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)
 ![License](https://img.shields.io/github/license/mxncmrchnd/pynth)
-![GitHub Release](https://img.shields.io/github/v/release/mxncmrchnd/pynth)
-![Code Size](https://img.shields.io/github/languages/code-size/mxncmrchnd/pynth)
+![GitHub Release](https://img.shields.io/github/v/release/mxncmrchnd/pynh)
+![Code Size](https://img.shields.io/github/languages/code-size/mxncmrchnd/pynt)
 
 `pynth` is a small MIDI player made in python.
 by Maxence Marchand, 2026
