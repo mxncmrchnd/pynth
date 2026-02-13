@@ -78,9 +78,6 @@ def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None) :
             o_wave = waveform.generate_waveform(freq, t, o.get('waveform'))
             o_wave *= o.get('volume', 1.0)
             wave += o_wave
-        ## normalize audio
-        wave_peak = np.max(np.abs(wave))
-        if wave_peak > 1.0 : wave /= wave_peak
         ## apply envelope
         env = envelope.generate_adsr(n_samples, adsr['attack'], adsr ['decay'], adsr['sustain'], adsr['release'])
         wave *= env
@@ -88,7 +85,9 @@ def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None) :
         wave *= velocity/127.0
         ## add it to the audio
         audio[start_i:end_i] += wave
-    
+    # normalize audio before effects
+    peak = np.max(np.abs(audio))
+    if peak > 0 : audio /= peak
     # effects
     if fx :
         if 'chorus' in fx :
@@ -100,7 +99,9 @@ def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None) :
         if 'reverb' in fx:
             params = fx['reverb']
             audio = effects.apply_reverb(audio, **params)
-    
+    # normalize audio after effects
+    peak = np.max(np.abs(audio))
+    if peak > 0 : audio /= peak
     return audio, rendered_notes
 
 ## write to file

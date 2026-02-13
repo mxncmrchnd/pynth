@@ -45,3 +45,5 @@ Then simply run :
 - [`sounddevice`](https://python-sounddevice.readthedocs.io/en/0.5.3/)
 - [`soundfile`](https://pypi.org/project/soundfile/)
 
+## Use of generative AI
+The GUI has been made with help from [Claude](https://claude.ai/) Sonnet version 4.5.
