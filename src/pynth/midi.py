@@ -21,7 +21,7 @@ def check_flac_output(path):
     return path
 
 # reads MIDI file to numpy audio array
-def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None) : 
+def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None) : 
     if adsr is None:
         adsr = defaults.DEFAULT_ADSR
     ## read the file
@@ -61,23 +61,33 @@ def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None) :
     ## determining total duration
     duration = max(end for _, end, _, _ in rendered_notes)
     audio = np.zeros(int(duration * defaults.SAMPLE_RATE), dtype=np.float32)
+    if osc is None : [{'enabled': True, 'waveform': waveform, 'volume': 1.0, 'pitch': 0}]
     # rendering the notes
     for start, end, note, velocity in rendered_notes:
         start_i = int(start * defaults.SAMPLE_RATE)
         end_i = int(end * defaults.SAMPLE_RATE)
         n_samples = end_i - start_i
         t = np.linspace(0, end - start, end_i - start_i, endpoint = False)
-        freq = 440.0 * 2 ** ((note-69)/12)
-        wave = waveform.generate_waveform(freq, t, wf)
-        envlp = envelope.generate_adsr(n_samples, adsr['attack'], adsr['decay'], adsr['sustain'], adsr['release'])
-        wave *= envlp
-        wave *= velocity / 127.0
+        ## mix oscillators
+        wave = np.zeros(n_samples, dtype = np.float32)
+        for o in osc : 
+            if not o.get('enabled', True):
+                continue
+            pitch_offset = o.get('pitch', 0)
+            freq = 440.0 * 2 ** ((note-69 + pitch_offset) / 12)
+            o_wave = waveform.generate_waveform(freq, t, o.get('waveform'))
+            o_wave *= o.get('volume', 1.0)
+            wave += o_wave
+        ## normalize audio
+        wave_peak = np.max(np.abs(wave))
+        if wave_peak > 1.0 : wave /= wave_peak
+        ## apply envelope
+        env = envelope.generate_adsr(n_samples, adsr['attack'], adsr ['decay'], adsr['sustain'], adsr['release'])
+        wave *= env
+        ## apply velocity
+        wave *= velocity/127.0
         ## add it to the audio
         audio[start_i:end_i] += wave
-    # normalize the audio
-    peak = np.max(np.abs(audio))
-    if peak > 0 : 
-        audio /= peak
     
     # effects
     if fx :
@@ -102,8 +112,8 @@ def audio_to_flac(audio, file_out):
     print(f"Rendered MIDI to {file_out}, containing {len(audio)} samples")
 
 ## high level function
-def midi_to_flac(midi_in, file_out, wf="sine", adsr = None, fx = None) : 
-    audio, rendered_notes = midi_to_audio(midi_in, wf = wf, adsr = adsr, fx = fx)
+def midi_to_flac(midi_in, file_out, wf="sine", adsr = None, fx = None, osc = None) : 
+    audio, rendered_notes = midi_to_audio(midi_in, wf = wf, adsr = adsr, fx = fx, osc = osc)
     if audio is None : 
         return
     audio_to_flac(audio, file_out)

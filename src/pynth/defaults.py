@@ -22,5 +22,25 @@ DEFAULT_EFFECTS = {
        'mix' : 0.5
     }
 }
+DEFAULT_OSCILLATORS = [
+    {
+        'enabled' : True,
+        'waveform' : 'sine',
+        'volume' : 1.0,
+        'pitch' : 0
+    },
+    {
+        'enabled' : False,
+        'waveform' : 'sine',
+        'volume' : 0.75,
+        'pitch' : -12
+    },
+    {
+        'enabled' : False,
+        'waveform' : 'sine',
+        'volume' : 0.5,
+        'pitch' : -24
+    }
+]
 DEFAULT_TEMPO = 500000 # 120bpm, in microseconds per beat
 SAMPLE_RATE = 44100

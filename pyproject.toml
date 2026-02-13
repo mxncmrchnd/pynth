@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pynth"
-version = "1.0.1"
+version = "1.1.0"
 description = "pynth is a small MIDI player made in python"
 requires-python = ">=3.8"
 dependencies = [
@@ -17,5 +17,4 @@ dependencies = [
 ]
 
 [project.scripts]
-pynth-cli = "pynth.cli:main"
-pynth-gui = "pynth.gui:main"
+pynth = "pynth.gui:main"

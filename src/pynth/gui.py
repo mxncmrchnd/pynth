@@ -1,3 +1,5 @@
+## GUI made with the help of Claude Sonnet 4.5
+
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import threading
@@ -8,19 +10,32 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 import sounddevice as sd
 
-from pynth.defaults import DEFAULT_ADSR, DEFAULT_EFFECTS
+from pynth.defaults import DEFAULT_ADSR, DEFAULT_EFFECTS, DEFAULT_OSCILLATORS
 
 class PynthGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Pynth - MIDI to Audio Synthesizer")
-        self.root.geometry("1300x900")
-        self.root.resizable(False, False)
+        
+        # Make window fullscreen
+        self.root.state('zoomed')  # Windows
+        # For Linux/Mac, use: self.root.attributes('-zoomed', True)
+        
+        self.root.resizable(True, True)
+        
+        # Configure grid weights for proportional scaling
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
         
         # Variables
         self.midi_path = tk.StringVar()
         self.output_path = tk.StringVar()
-        self.waveform = tk.StringVar(value="sine")
+        
+        # Oscillator variables (3 oscillators)
+        self.osc_enabled = [tk.BooleanVar(value=osc['enabled']) for osc in DEFAULT_OSCILLATORS]
+        self.osc_waveform = [tk.StringVar(value=osc['waveform']) for osc in DEFAULT_OSCILLATORS]
+        self.osc_volume = [tk.DoubleVar(value=osc['volume']) for osc in DEFAULT_OSCILLATORS]
+        self.osc_pitch = [tk.IntVar(value=osc['pitch']) for osc in DEFAULT_OSCILLATORS]
         
         # ADSR variables - use defaults from defaults.py
         self.attack = tk.DoubleVar(value=DEFAULT_ADSR['attack'])
@@ -59,45 +74,74 @@ class PynthGUI:
         # Main container with two columns
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        main_frame.grid_rowconfigure(0, weight=1)
+        main_frame.grid_columnconfigure(0, weight=1, minsize=550)  # Left column minimum width
+        main_frame.grid_columnconfigure(1, weight=1, minsize=450)  # Right column minimum width
         
         # Left column (controls)
         left_frame = ttk.Frame(main_frame)
         left_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
+        left_frame.grid_columnconfigure(0, weight=1)
         
-        # Right column (ADSR visualization)
+        # Configure row weights - all content-based, no expansion
+        left_frame.grid_rowconfigure(0, weight=0)  # File selection
+        left_frame.grid_rowconfigure(1, weight=0)  # Oscillators
+        left_frame.grid_rowconfigure(2, weight=0)  # ADSR
+        left_frame.grid_rowconfigure(3, weight=0)  # Effects
+        
+        # Right column (ADSR visualization + controls)
         right_frame = ttk.Frame(main_frame)
         right_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
+        right_frame.grid_rowconfigure(0, weight=1)  # Visualization - expandable
+        right_frame.grid_rowconfigure(1, weight=0)  # Buttons - fixed
+        right_frame.grid_rowconfigure(2, weight=0)  # Status - fixed
+        right_frame.grid_columnconfigure(0, weight=1)
         
         # File Selection Section
-        file_frame = ttk.LabelFrame(left_frame, text="File Selection", padding="10")
+        file_frame = ttk.LabelFrame(left_frame, text="File Selection", padding="5")
         file_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=5)
         
-        ttk.Label(file_frame, text="MIDI Input:").grid(row=0, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(file_frame, textvariable=self.midi_path, width=40).grid(row=0, column=1, padx=5)
+        ttk.Label(file_frame, text="MIDI Input:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        ttk.Entry(file_frame, textvariable=self.midi_path, width=35).grid(row=0, column=1, padx=5)
         ttk.Button(file_frame, text="Browse", command=self.browse_midi).grid(row=0, column=2)
         
-        ttk.Label(file_frame, text="FLAC Output:").grid(row=1, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(file_frame, textvariable=self.output_path, width=40).grid(row=1, column=1, padx=5)
+        ttk.Label(file_frame, text="FLAC Output:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        ttk.Entry(file_frame, textvariable=self.output_path, width=35).grid(row=1, column=1, padx=5)
         ttk.Button(file_frame, text="Browse", command=self.browse_output).grid(row=1, column=2)
         
-        # Waveform Selection
-        wave_frame = ttk.LabelFrame(left_frame, text="Waveform", padding="10")
-        wave_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=5)
+        # Oscillators Section with Tabs
+        osc_frame = ttk.LabelFrame(left_frame, text="Oscillators", padding="5")
+        osc_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=5)
         
-        waveforms = [("Sine", "sine"), ("Saw", "saw"), ("Square", "square"), ("Triangle", "triangle")]
-        for i, (text, value) in enumerate(waveforms):
-            ttk.Radiobutton(wave_frame, text=text, variable=self.waveform, 
-                          value=value).grid(row=0, column=i, padx=10)
+        # Create notebook (tabbed interface)
+        self.osc_notebook = ttk.Notebook(osc_frame)
+        self.osc_notebook.pack(fill=tk.BOTH, expand=True)
         
-        # ADSR Section
-        adsr_frame = ttk.LabelFrame(left_frame, text="ADSR Envelope", padding="10")
+        # Create tabs for each oscillator
+        self.osc_widgets = []
+        for i in range(3):
+            tab = ttk.Frame(self.osc_notebook, padding="5")
+            self.osc_notebook.add(tab, text=f"Oscillator {i+1}")
+            
+            widgets = self.create_oscillator_tab(tab, i)
+            self.osc_widgets.append(widgets)
+            
+            # Oscillator 1 is always enabled, others start disabled
+            if i > 0:
+                self.set_widgets_state(widgets[1:], tk.DISABLED)  # Skip checkbox
+        
+        # ADSR Section (shared across all oscillators)
+        adsr_frame = ttk.LabelFrame(left_frame, text="ADSR Envelope (Shared)", padding="5")
         adsr_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=5)
         
-        # Note: Using from_=max and to=min for inverted sliders
-        self.create_knob(adsr_frame, "Attack", self.attack, 1.0, 0.001, 0)
-        self.create_knob(adsr_frame, "Decay", self.decay, 2.0, 0.001, 1)
-        self.create_knob(adsr_frame, "Sustain", self.sustain, 1.0, 0.0, 2)
-        self.create_knob(adsr_frame, "Release", self.release, 2.0, 0.001, 3)
+        # Create a sub-frame to center ADSR controls
+        adsr_container = ttk.Frame(adsr_frame)
+        adsr_container.pack(expand=True)
+        
+        self.create_knob(adsr_container, "Attack", self.attack, 1.0, 0.001, 0)
+        self.create_knob(adsr_container, "Decay", self.decay, 2.0, 0.001, 1)
+        self.create_knob(adsr_container, "Sustain", self.sustain, 1.0, 0.0, 2)
+        self.create_knob(adsr_container, "Release", self.release, 2.0, 0.001, 3)
         
         # Add trace to update plot when ADSR changes
         self.attack.trace_add('write', lambda *args: self.update_adsr_plot())
@@ -106,44 +150,44 @@ class PynthGUI:
         self.release.trace_add('write', lambda *args: self.update_adsr_plot())
         
         # Effects Section
-        effects_frame = ttk.LabelFrame(left_frame, text="Effects", padding="10")
+        effects_frame = ttk.LabelFrame(left_frame, text="Effects", padding="5")
         effects_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=5)
         
         # Delay
         delay_frame = ttk.Frame(effects_frame)
-        delay_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=5)
+        delay_frame.pack(fill=tk.X, pady=2)
         
         ttk.Checkbutton(delay_frame, text="Delay", variable=self.delay_enabled,
-                       command=self.toggle_delay).grid(row=0, column=0, sticky=tk.W)
+                    command=self.toggle_delay).pack(anchor=tk.W)
         
         self.delay_controls = ttk.Frame(delay_frame)
-        self.delay_controls.grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E))
+        self.delay_controls.pack(fill=tk.X, padx=20)
         self.delay_widgets = self.create_mini_knob(self.delay_controls, "Time (s)", self.delay_time, 0.01, 2.0, 0)
         self.delay_widgets.extend(self.create_mini_knob(self.delay_controls, "Feedback", self.delay_feedback, 0.0, 0.9, 1))
         self.delay_widgets.extend(self.create_mini_knob(self.delay_controls, "Mix", self.delay_mix, 0.0, 1.0, 2))
         
         # Reverb
         reverb_frame = ttk.Frame(effects_frame)
-        reverb_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=5)
+        reverb_frame.pack(fill=tk.X, pady=2)
         
         ttk.Checkbutton(reverb_frame, text="Reverb", variable=self.reverb_enabled,
-                       command=self.toggle_reverb).grid(row=0, column=0, sticky=tk.W)
+                    command=self.toggle_reverb).pack(anchor=tk.W)
         
         self.reverb_controls = ttk.Frame(reverb_frame)
-        self.reverb_controls.grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E))
+        self.reverb_controls.pack(fill=tk.X, padx=20)
         self.reverb_widgets = self.create_mini_knob(self.reverb_controls, "Room Size", self.reverb_room_size, 0.0, 1.0, 0)
         self.reverb_widgets.extend(self.create_mini_knob(self.reverb_controls, "Damping", self.reverb_damping, 0.0, 1.0, 1))
         self.reverb_widgets.extend(self.create_mini_knob(self.reverb_controls, "Mix", self.reverb_mix, 0.0, 1.0, 2))
         
         # Chorus
         chorus_frame = ttk.Frame(effects_frame)
-        chorus_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=5)
+        chorus_frame.pack(fill=tk.X, pady=2)
         
         ttk.Checkbutton(chorus_frame, text="Chorus", variable=self.chorus_enabled,
-                       command=self.toggle_chorus).grid(row=0, column=0, sticky=tk.W)
+                    command=self.toggle_chorus).pack(anchor=tk.W)
         
         self.chorus_controls = ttk.Frame(chorus_frame)
-        self.chorus_controls.grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E))
+        self.chorus_controls.pack(fill=tk.X, padx=20)
         self.chorus_widgets = self.create_mini_knob(self.chorus_controls, "Rate (Hz)", self.chorus_rate, 0.1, 5.0, 0)
         self.chorus_widgets.extend(self.create_mini_knob(self.chorus_controls, "Depth", self.chorus_depth, 0.0001, 0.01, 1))
         self.chorus_widgets.extend(self.create_mini_knob(self.chorus_controls, "Mix", self.chorus_mix, 0.0, 1.0, 2))
@@ -153,9 +197,21 @@ class PynthGUI:
         self.set_widgets_state(self.reverb_widgets, tk.DISABLED)
         self.set_widgets_state(self.chorus_widgets, tk.DISABLED)
         
-        # Buttons
-        button_frame = ttk.Frame(left_frame)
-        button_frame.grid(row=4, column=0, pady=20)
+        # RIGHT COLUMN - ADSR Visualization
+        viz_frame = ttk.LabelFrame(right_frame, text="ADSR Envelope Visualization", padding="10")
+        viz_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        viz_frame.grid_rowconfigure(0, weight=1)
+        viz_frame.grid_columnconfigure(0, weight=1)
+        
+        # Create matplotlib figure - let it scale with window
+        self.fig = Figure(dpi=100)
+        self.ax = self.fig.add_subplot(111)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=viz_frame)
+        self.canvas.get_tk_widget().grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # Buttons (moved to right panel)
+        button_frame = ttk.Frame(right_frame)
+        button_frame.grid(row=1, column=0, pady=10)
         
         self.preview_button = ttk.Button(button_frame, text="▶ Preview", command=self.preview_audio_action)
         self.preview_button.pack(side=tk.LEFT, padx=5)
@@ -165,20 +221,120 @@ class PynthGUI:
         
         ttk.Button(button_frame, text="💾 Render & Export", command=self.render_audio).pack(side=tk.LEFT, padx=5)
         
-        # Status Bar
+        # Status Bar (moved to right panel)
         self.status = tk.StringVar(value="Ready")
-        status_bar = ttk.Label(left_frame, textvariable=self.status, relief=tk.SUNKEN, anchor=tk.W)
-        status_bar.grid(row=5, column=0, sticky=(tk.W, tk.E))
+        status_bar = ttk.Label(right_frame, textvariable=self.status, relief=tk.SUNKEN, anchor=tk.W)
+        status_bar.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
+    
+    def create_oscillator_tab(self, parent, osc_index):
+        """Create controls for a single oscillator tab"""
+        widgets = []
         
-        # ADSR Visualization (right column)
-        viz_frame = ttk.LabelFrame(right_frame, text="ADSR Envelope Visualization", padding="10")
-        viz_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Enable/Disable checkbox (only for oscillators 2 and 3)
+        if osc_index > 0:
+            enable_check = ttk.Checkbutton(
+                parent, 
+                text="Enable Oscillator", 
+                variable=self.osc_enabled[osc_index],
+                command=lambda: self.toggle_oscillator(osc_index)
+            )
+            enable_check.pack(anchor=tk.W, pady=(0, 5))
+            widgets.append(enable_check)
         
-        # Create matplotlib figure
-        self.fig = Figure(figsize=(5, 6), dpi=100)
-        self.ax = self.fig.add_subplot(111)
-        self.canvas = FigureCanvasTkAgg(self.fig, master=viz_frame)
-        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        # Waveform Selection
+        wave_frame = ttk.Frame(parent)
+        wave_frame.pack(fill=tk.X, pady=5)
+        
+        wave_label = ttk.Label(wave_frame, text="Waveform:")
+        wave_label.pack(side=tk.LEFT, padx=(0, 10))
+        widgets.append(wave_label)
+        
+        waveforms = [("Sine", "sine"), ("Saw", "saw"), ("Square", "square"), ("Triangle", "triangle")]
+        for text, value in waveforms:
+            rb = ttk.Radiobutton(
+                wave_frame, 
+                text=text, 
+                variable=self.osc_waveform[osc_index], 
+                value=value
+            )
+            rb.pack(side=tk.LEFT, padx=5)
+            widgets.append(rb)
+        
+        # Volume Control
+        vol_frame = ttk.Frame(parent)
+        vol_frame.pack(fill=tk.X, pady=10)
+        
+        vol_label = ttk.Label(vol_frame, text="Volume:", width=10)
+        vol_label.pack(side=tk.LEFT)
+        widgets.append(vol_label)
+        
+        vol_scale = ttk.Scale(
+            vol_frame, 
+            from_=0.0, 
+            to=1.0, 
+            orient=tk.HORIZONTAL,
+            variable=self.osc_volume[osc_index]
+        )
+        vol_scale.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
+        widgets.append(vol_scale)
+        
+        vol_value = ttk.Label(vol_frame, text=f"{self.osc_volume[osc_index].get():.2f}", width=6)
+        vol_value.pack(side=tk.LEFT)
+        widgets.append(vol_value)
+        
+        # Update volume label
+        def update_vol_label(*args):
+            vol_value.config(text=f"{self.osc_volume[osc_index].get():.2f}")
+        self.osc_volume[osc_index].trace_add('write', update_vol_label)
+        
+        # Pitch Control (in semitones)
+        pitch_frame = ttk.Frame(parent)
+        pitch_frame.pack(fill=tk.X, pady=10)
+        
+        pitch_label = ttk.Label(pitch_frame, text="Pitch:", width=10)
+        pitch_label.pack(side=tk.LEFT)
+        widgets.append(pitch_label)
+        
+        pitch_scale = ttk.Scale(
+            pitch_frame, 
+            from_=-24, 
+            to=24, 
+            orient=tk.HORIZONTAL,
+            variable=self.osc_pitch[osc_index]
+        )
+        pitch_scale.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
+        widgets.append(pitch_scale)
+        
+        pitch_value = ttk.Label(pitch_frame, text=f"{self.osc_pitch[osc_index].get():+d} st", width=8)
+        pitch_value.pack(side=tk.LEFT)
+        widgets.append(pitch_value)
+        
+        # Update pitch label
+        def update_pitch_label(*args):
+            val = self.osc_pitch[osc_index].get()
+            pitch_value.config(text=f"{val:+d} st")
+        self.osc_pitch[osc_index].trace_add('write', update_pitch_label)
+        
+        # Info text
+        info_label = ttk.Label(
+            parent, 
+            text="💡 Tip: Use pitch offset to create octaves (+12, -12) or detuned sounds (+/-1 to +/-7)",
+            wraplength=350,
+            foreground="gray"
+        )
+        info_label.pack(pady=10)
+        widgets.append(info_label)
+        
+        return widgets
+    
+    def toggle_oscillator(self, osc_index):
+        """Enable/disable oscillator controls"""
+        if self.osc_enabled[osc_index].get():
+            # Enable all widgets except the checkbox
+            self.set_widgets_state(self.osc_widgets[osc_index][1:], tk.NORMAL)
+        else:
+            # Disable all widgets except the checkbox
+            self.set_widgets_state(self.osc_widgets[osc_index][1:], tk.DISABLED)
     
     def create_knob(self, parent, label, variable, max_val, min_val, column):
         """Create a labeled slider (knob) for ADSR parameters - inverted"""
@@ -189,7 +345,7 @@ class PynthGUI:
         
         # from_=max, to=min for inverted slider
         scale = ttk.Scale(frame, from_=max_val, to=min_val, orient=tk.VERTICAL,
-                         variable=variable, length=150)
+                         variable=variable, length=120)
         scale.pack()
         
         value_label = ttk.Label(frame, text=f"{variable.get():.3f}")
@@ -204,14 +360,14 @@ class PynthGUI:
         """Create a smaller horizontal slider for effect parameters
         Returns list of widgets that can be enabled/disabled"""
         frame = ttk.Frame(parent)
-        frame.grid(row=0, column=column, padx=5, pady=5)
+        frame.grid(row=0, column=column, padx=3, pady=2)
         
-        label_widget = ttk.Label(frame, text=label, width=10)
+        label_widget = ttk.Label(frame, text=label, width=9)
         label_widget.pack(side=tk.LEFT)
         
         scale = ttk.Scale(frame, from_=min_val, to=max_val, orient=tk.HORIZONTAL,
-                         variable=variable, length=100)
-        scale.pack(side=tk.LEFT, padx=5)
+                         variable=variable, length=80)
+        scale.pack(side=tk.LEFT, padx=3)
         
         value_label = ttk.Label(frame, text=f"{variable.get():.3f}", width=6)
         value_label.pack(side=tk.LEFT)
@@ -276,7 +432,7 @@ class PynthGUI:
         self.ax.grid(True, alpha=0.3)
         self.ax.set_ylim(-0.1, 1.1)
         self.ax.set_xlim(0, total_time * 1.05)
-        self.ax.legend(loc='upper right', fontsize=8)
+        self.ax.legend(loc='upper right', fontsize=9)
         
         self.canvas.draw()
     
@@ -320,7 +476,7 @@ class PynthGUI:
             self.output_path.set(filename)
     
     def get_parameters(self):
-        """Get current ADSR and effects parameters"""
+        """Get current ADSR, effects, and oscillator parameters"""
         adsr = {
             'attack': self.attack.get(),
             'decay': self.decay.get(),
@@ -350,7 +506,17 @@ class PynthGUI:
                 'mix': self.chorus_mix.get()
             }
         
-        return adsr, effects
+        # Get oscillator settings
+        oscillators = []
+        for i in range(3):
+            oscillators.append({
+                'enabled': self.osc_enabled[i].get(),
+                'waveform': self.osc_waveform[i].get(),
+                'volume': self.osc_volume[i].get(),
+                'pitch': self.osc_pitch[i].get()
+            })
+        
+        return adsr, effects, oscillators
     
     def preview_audio_action(self):
         """Generate and play audio preview"""
@@ -366,13 +532,13 @@ class PynthGUI:
                 
                 from pynth.midi import midi_to_audio
                 
-                adsr, effects = self.get_parameters()
+                adsr, effects, oscillators = self.get_parameters()
                 
                 audio, _ = midi_to_audio(
                     self.midi_path.get(),
-                    wf=self.waveform.get(),
                     adsr=adsr,
-                    fx=effects if effects else None
+                    fx=effects if effects else None,
+                    osc=oscillators
                 )
                 
                 if audio is None:
@@ -431,14 +597,14 @@ class PynthGUI:
                 
                 from pynth.midi import midi_to_flac
                 
-                adsr, effects = self.get_parameters()
+                adsr, effects, oscillators = self.get_parameters()
                 
                 midi_to_flac(
                     self.midi_path.get(),
                     self.output_path.get(),
-                    wf=self.waveform.get(),
                     adsr=adsr,
-                    fx=effects if effects else None
+                    fx=effects if effects else None,
+                    osc=oscillators
                 )
                 
                 self.status.set("Render complete!")

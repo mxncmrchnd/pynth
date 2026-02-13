@@ -12,6 +12,7 @@ by Maxence Marchand, 2026
 - Choice of waveform : sine, saw, square or triangle
 - ADSR envelope modification
 - Effects : chorus, delay and reverb
+- Multiple oscillators, with independant waveform, volume and pitch controls
 - Audio preview
 - Export as FLAC
 
@@ -20,29 +21,21 @@ Open a terminal in the `pynth` folder and type :
 
 ```pip install -e .```
 
-If you wish to run the GUI version (recommended) : 
+Then simply run : 
 
-```pynth-gui``` and play around.
+```pynth``` and play around.
 
-![GUI screenshot](screenshot.png)
+![GUI screenshot](screenshot_.png)
 
 **IMPORTANT** The GUI relies on ```tkinter```.
 
-If you wish to use the CLI version : 
-
-```pynth-cli input.mid output.flac```
-
-**IMPORTANT** The CLI version is limited in features. It uses the default envelope, and only one effect can be applied at a time, with default parameters.
-
-Example usage : 
-
-```pynth-cli input.mid output.flac --waveform square --effect chorus```
-
 ## Future developments
 
-- More oscillators
 - LFO and filters
-- Removal of the CLI version (too inconvenient to use as more features get added)
+
+## Versions changelog
+- 1.0 : first release
+- 1.1 : removed CLI, added multiple oscillators, GUI refinements
 
 ## Dependencies
 - [`matplotlib`](https://matplotlib.org/)
