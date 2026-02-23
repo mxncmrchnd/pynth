@@ -25,9 +25,8 @@ Then simply run :
 
 ```pynth``` and play around.
 
-![GUI screenshot](screenshot_.png)
+![GUI screenshot](screenshot_ctk.png)
 
-**IMPORTANT** The GUI relies on ```tkinter```.
 
 ## Future developments
 
@@ -36,14 +35,12 @@ Then simply run :
 ## Versions changelog
 - 1.0 : first release
 - 1.1 : removed CLI, added multiple oscillators, GUI refinements
+- 1.2 : reworked GUI : replaced previous tkinter GUI with CustomTkinter
 
 ## Dependencies
-- [`matplotlib`](https://matplotlib.org/)
+- [`customtkinter`](https://customtkinter.tomschimansky.com/)
 - [`mido`](https://mido.readthedocs.io/en/stable/)
 - [`numpy`](https://numpy.org/)
 - [`scipy`](https://scipy.org/)
 - [`sounddevice`](https://python-sounddevice.readthedocs.io/en/0.5.3/)
 - [`soundfile`](https://pypi.org/project/soundfile/)
-
-## Use of generative AI
-The GUI has been made with help from [Claude](https://claude.ai/) Sonnet version 4.5.
