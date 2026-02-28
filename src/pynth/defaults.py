@@ -5,6 +5,11 @@ DEFAULT_ADSR = {
     'sustain': 0.0,
     'release': 0.3
 }
+DEFAULT_AM_LFO = {
+    'enabled' : False,
+    'rate' : 0.5,
+    'amplitude' : 0.5
+}
 DEFAULT_EFFECTS = {
     'chorus' : {
         'rate' : 1.5,

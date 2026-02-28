@@ -21,7 +21,7 @@ def check_flac_output(path):
     return path
 
 # reads MIDI file to numpy audio array
-def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None) : 
+def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None, am_lfo = None) : 
     if adsr is None:
         adsr = defaults.DEFAULT_ADSR
     ## read the file
@@ -61,7 +61,8 @@ def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None) :
     ## determining total duration
     duration = max(end for _, end, _, _ in rendered_notes)
     audio = np.zeros(int(duration * defaults.SAMPLE_RATE), dtype=np.float32)
-    if osc is None : [{'enabled': True, 'waveform': waveform, 'volume': 1.0, 'pitch': 0}]
+    if osc is None : 
+        osc = [{'enabled': True, 'waveform': waveform, 'volume': 1.0, 'pitch': 0}]
     # rendering the notes
     for start, end, note, velocity in rendered_notes:
         start_i = int(start * defaults.SAMPLE_RATE)
@@ -88,6 +89,20 @@ def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None) :
     # normalize audio before effects
     peak = np.max(np.abs(audio))
     if peak > 0 : audio /= peak
+    # applying the AM LFO
+    if am_lfo is not None and am_lfo['enabled']:
+        aml_amp = am_lfo['amplitude']
+        aml_rate = am_lfo['rate']
+        ## get bpm value
+        bpm = 60_000_000 / tempo
+        ## turn it into herz values
+        aml_hz = bpm/60.0/aml_rate
+        ## get audio length
+        t_audio = np.arange(len(audio), dtype=np.float32) / defaults.SAMPLE_RATE
+        ## create modulator
+        modulator = 1.0 - aml_amp * (0.5 + np.sin(2.0 * np.pi * aml_hz * t_audio)/2)
+        ## apply modulator
+        audio *= modulator
     # effects
     if fx :
         if 'chorus' in fx :
@@ -113,8 +128,8 @@ def audio_to_flac(audio, file_out):
     print(f"Rendered MIDI to {file_out}, containing {len(audio)} samples")
 
 ## high level function
-def midi_to_flac(midi_in, file_out, wf="sine", adsr = None, fx = None, osc = None) : 
-    audio, rendered_notes = midi_to_audio(midi_in, wf = wf, adsr = adsr, fx = fx, osc = osc)
+def midi_to_flac(midi_in, file_out, wf="sine", adsr = None, fx = None, osc = None, am_lfo = None) : 
+    audio, rendered_notes = midi_to_audio(midi_in, wf = wf, adsr = adsr, fx = fx, osc = osc, am_lfo = am_lfo)
     if audio is None : 
         return
     audio_to_flac(audio, file_out)

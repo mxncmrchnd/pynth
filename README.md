@@ -12,6 +12,7 @@ by Maxence Marchand, 2026
 - Choice of waveform : sine, saw, square or triangle
 - ADSR envelope modification
 - Effects : chorus, delay and reverb
+- Amplitude modulation
 - Multiple oscillators, with independant waveform, volume and pitch controls
 - Audio preview
 - Export as FLAC
@@ -30,12 +31,13 @@ Then simply run :
 
 ## Future developments
 
-- LFO and filters
+- Frequency Modulation and filters
 
 ## Versions changelog
 - 1.0 : first release
 - 1.1 : removed CLI, added multiple oscillators, GUI refinements
 - 1.2 : reworked GUI : replaced previous tkinter GUI with CustomTkinter
+- 1.3 : added amplitude modulation
 
 ## Dependencies
 - [`customtkinter`](https://customtkinter.tomschimansky.com/)

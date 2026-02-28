@@ -6,7 +6,7 @@ from pathlib import Path
 import sounddevice as sd
 
 # import default values
-from pynth.defaults import DEFAULT_ADSR, DEFAULT_EFFECTS, DEFAULT_OSCILLATORS
+from pynth.defaults import DEFAULT_ADSR, DEFAULT_EFFECTS, DEFAULT_AM_LFO, DEFAULT_OSCILLATORS
 
 # theme setup
 ctk.set_appearance_mode("system")
@@ -20,7 +20,7 @@ class PynthGUI(ctk.CTk):
         self.title("Pynth - MIDI to Audio synthesizer")
         sw = self.winfo_screenwidth()
         sh = self.winfo_screenheight()
-        self.geometry(f"{int(sw*0.7)}x{int(sh*0.6)}")
+        self.geometry(f"{int(sw*0.7)}x{int(sh*0.7)}")
         self.resizable(False, False)
         # variables
         ## I/O paths
@@ -36,6 +36,10 @@ class PynthGUI(ctk.CTk):
         self.decay = ctk.DoubleVar(value=DEFAULT_ADSR["decay"])
         self.sustain = ctk.DoubleVar(value=DEFAULT_ADSR["sustain"])
         self.release = ctk.DoubleVar(value=DEFAULT_ADSR["release"])
+        ## AM LFO values
+        self.am_lfo_enabled = ctk.BooleanVar(value=DEFAULT_AM_LFO['enabled'])
+        self.am_lfo_rate = ctk.DoubleVar(value=DEFAULT_AM_LFO['rate'])
+        self.am_lfo_amplitude = ctk.DoubleVar(value=DEFAULT_AM_LFO['amplitude'])
         ## effects
         ### status
         self.delay_enabled = ctk.BooleanVar(value=False)
@@ -97,9 +101,14 @@ class PynthGUI(ctk.CTk):
             if i > 0:
                 self.osc_enabled[i].trace_add("write", lambda *_, idx = i: self.update_osc_state(idx))
         # right side : envelope
-        env_frame = ctk.CTkFrame(parent)
-        env_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
-        self.build_envelope(env_frame)
+        right_frame = ctk.CTkFrame(parent)
+        right_frame.grid(row=0, column=1, sticky="nsew",padx=10, pady=10)
+        right_tabs = ctk.CTkTabview(right_frame)
+        right_tabs.pack(fill="both", expand=True)
+        env_tab = right_tabs.add("Envelope")
+        am_tab = right_tabs.add("Amplitude Modulation")
+        self.build_envelope(env_tab)
+        self.build_am(am_tab)
         for i in range(1, 3):
             self.update_osc_state(i)
     # build oscillator window
@@ -148,6 +157,43 @@ class PynthGUI(ctk.CTk):
         self.vertical_slider(sliders, "Decay", self.decay, 0.001, 2, "s")
         self.vertical_slider(sliders, "Sustain", self.sustain, 0, 1, "")
         self.vertical_slider(sliders, "Release", self.release, 0.001, 3, "s")
+    # build AM tab
+    def build_am(self, parent):
+        frame = ctk.CTkFrame(parent)
+        frame.pack(expand=True, padx=10, pady=10)
+        ctk.CTkLabel(frame, text="Amplitude Modulation", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(10, 5))
+        ctk.CTkCheckBox(frame, text="Enabled", variable=self.am_lfo_enabled).pack(pady=(0, 15))
+        sliders = ctk.CTkFrame(frame)
+        sliders.pack()
+        ## rate sliders (logarithmic spacing)
+        BEAT_VALUES = [1/64, 1/32, 1/16, 1/8, 1/4, 1/2, 1.0]
+        BEAT_LABELS = ["1/64", "1/32", "1/16", "1/8", "1/4", "1/2", "1"]
+        self.am_lfo_rate_idx = ctk.IntVar(value=BEAT_VALUES.index(
+            min(BEAT_VALUES, key=lambda x: abs(x - self.am_lfo_rate.get()))
+        ))
+        rate_frame = ctk.CTkFrame(sliders)
+        rate_frame.pack(pady=10)
+        ctk.CTkLabel(rate_frame, text="Rate").pack()
+        rate_slider = ctk.CTkSlider(rate_frame, from_=0, to=6, number_of_steps=6, variable=self.am_lfo_rate_idx, width=250)
+        rate_slider.pack()
+        rate_label = ctk.CTkLabel(rate_frame, text="")
+        rate_label.pack()
+        def update_rate(*_):
+            idx = int(round(self.am_lfo_rate_idx.get()))
+            self.am_lfo_rate.set(BEAT_VALUES[idx])
+            rate_label.configure(text=f"{BEAT_LABELS[idx]} beat")
+        self.am_lfo_rate_idx.trace_add("write", update_rate)
+        update_rate()
+        ## depth slider
+        depth_slider = self.labeled_slider(sliders, "Depth", self.am_lfo_amplitude, 0.0, 1.0, "%", percent=True)[0]
+        ## disabling sliders when AM disabled
+        self.am_lfo_widgets = [rate_slider, depth_slider]
+        def update_lfo_state(*_):
+            state = "normal" if self.am_lfo_enabled.get() else "disabled"
+            for w in self.am_lfo_widgets:
+                w.configure(state=state)
+        self.am_lfo_enabled.trace_add("write", update_lfo_state)
+        update_lfo_state()
     # build the effects tabs
     def build_effects(self, parent):
         parent.grid_columnconfigure((0, 1, 2), weight=1)
@@ -294,7 +340,9 @@ class PynthGUI(ctk.CTk):
         oscillators = []
         for i in range(3):
             oscillators.append(dict(enabled = self.osc_enabled[i].get(), waveform = self.osc_waveform[i].get(), volume = self.osc_volume[i].get(),pitch = self.osc_pitch[i].get()))
-        return adsr, effects, oscillators
+        #AM LFO
+        am_lfo = dict(enabled = self.am_lfo_enabled.get(), rate = self.am_lfo_rate.get(), amplitude = self.am_lfo_amplitude.get())
+        return adsr, effects, oscillators, am_lfo
     # preview audio
     def preview_audio_action(self):
         ## if no MIDI has been provided
@@ -306,8 +354,8 @@ class PynthGUI(ctk.CTk):
             try:
                 from pynth.midi import midi_to_audio
                 self.status.set("Generating preview...")
-                adsr, fx, osc = self.get_parameters()
-                audio, _ = midi_to_audio(self.midi_path.get(), adsr = adsr, fx = fx if fx else None, osc = osc)
+                adsr, fx, osc, am_lfo = self.get_parameters()
+                audio, _ = midi_to_audio(self.midi_path.get(), adsr = adsr, fx = fx if fx else None, osc = osc, am_lfo = am_lfo)
                 self.preview_audio = audio
                 ### change status
                 self.status.set("Playing...")
@@ -336,8 +384,8 @@ class PynthGUI(ctk.CTk):
                 ### update status
                 self.status.set("Rendering...")
                 ### export
-                adsr, fx, osc = self.get_parameters()
-                midi_to_flac(self.midi_path.get(), self.output_path.get(), adsr = adsr, fx = fx if fx else None, osc = osc)
+                adsr, fx, osc, am_lfo = self.get_parameters()
+                midi_to_flac(self.midi_path.get(), self.output_path.get(), adsr = adsr, fx = fx if fx else None, osc = osc, am_lfo = am_lfo)
                 ### update status to done
                 self.status.set("Done")
             ## if an error occured
