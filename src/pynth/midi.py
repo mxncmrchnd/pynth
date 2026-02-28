@@ -93,6 +93,7 @@ def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None, am_l
     if am_lfo is not None and am_lfo['enabled']:
         aml_amp = am_lfo['amplitude']
         aml_rate = am_lfo['rate']
+        aml_wave = am_lfo['waveform']
         ## get bpm value
         bpm = 60_000_000 / tempo
         ## turn it into herz values
@@ -100,7 +101,8 @@ def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None, am_l
         ## get audio length
         t_audio = np.arange(len(audio), dtype=np.float32) / defaults.SAMPLE_RATE
         ## create modulator
-        modulator = 1.0 - aml_amp * (0.5 + np.sin(2.0 * np.pi * aml_hz * t_audio)/2)
+        m_wave = waveform.generate_waveform(aml_hz, t_audio, aml_wave)
+        modulator = (1 - aml_amp)+ (aml_amp * (0.5 + m_wave /2.0))
         ## apply modulator
         audio *= modulator
     # effects

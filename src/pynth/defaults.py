@@ -8,7 +8,8 @@ DEFAULT_ADSR = {
 DEFAULT_AM_LFO = {
     'enabled' : False,
     'rate' : 0.5,
-    'amplitude' : 0.5
+    'amplitude' : 0.5,
+    'waveform' : 'sine'
 }
 DEFAULT_EFFECTS = {
     'chorus' : {

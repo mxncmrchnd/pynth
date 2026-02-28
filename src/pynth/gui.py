@@ -40,6 +40,7 @@ class PynthGUI(ctk.CTk):
         self.am_lfo_enabled = ctk.BooleanVar(value=DEFAULT_AM_LFO['enabled'])
         self.am_lfo_rate = ctk.DoubleVar(value=DEFAULT_AM_LFO['rate'])
         self.am_lfo_amplitude = ctk.DoubleVar(value=DEFAULT_AM_LFO['amplitude'])
+        self.am_lfo_waveform = ctk.StringVar(value=DEFAULT_AM_LFO['waveform'])
         ## effects
         ### status
         self.delay_enabled = ctk.BooleanVar(value=False)
@@ -162,15 +163,24 @@ class PynthGUI(ctk.CTk):
         frame = ctk.CTkFrame(parent)
         frame.pack(expand=True, padx=10, pady=10)
         ctk.CTkLabel(frame, text="Amplitude Modulation", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(10, 5))
-        ctk.CTkCheckBox(frame, text="Enabled", variable=self.am_lfo_enabled).pack(pady=(0, 15))
-        sliders = ctk.CTkFrame(frame)
-        sliders.pack()
-        ## rate sliders (logarithmic spacing)
+        ctk.CTkCheckBox(frame, text="Enabled", variable=self.am_lfo_enabled).pack(pady=(0, 10))
+        content = ctk.CTkFrame(frame)
+        content.pack()
+        ## LFO waveform selection
+        wf_frame = ctk.CTkFrame(content)
+        wf_frame.pack(side="left", padx=(10, 20), pady=10)
+        ctk.CTkLabel(wf_frame, text="Waveform").pack(pady=(5, 6))
+        self.am_lfo_wf_buttons = []
+        for text, val in [("Sine", "sine"), ("Saw", "saw"), ("Square", "square"), ("Triangle", "triangle")]:
+            b = ctk.CTkRadioButton(wf_frame, text=text, variable=self.am_lfo_waveform, value=val)
+            b.pack(anchor="w", pady=4)
+            self.am_lfo_wf_buttons.append(b)
+        sliders = ctk.CTkFrame(content)
+        sliders.pack(side="left", pady=10)
+        ## rate slider (logarithmic spacing)
         BEAT_VALUES = [1/64, 1/32, 1/16, 1/8, 1/4, 1/2, 1.0]
         BEAT_LABELS = ["1/64", "1/32", "1/16", "1/8", "1/4", "1/2", "1"]
-        self.am_lfo_rate_idx = ctk.IntVar(value=BEAT_VALUES.index(
-            min(BEAT_VALUES, key=lambda x: abs(x - self.am_lfo_rate.get()))
-        ))
+        self.am_lfo_rate_idx = ctk.IntVar(value=BEAT_VALUES.index(min(BEAT_VALUES, key=lambda x: abs(x - self.am_lfo_rate.get()))))
         rate_frame = ctk.CTkFrame(sliders)
         rate_frame.pack(pady=10)
         ctk.CTkLabel(rate_frame, text="Rate").pack()
@@ -187,7 +197,7 @@ class PynthGUI(ctk.CTk):
         ## depth slider
         depth_slider = self.labeled_slider(sliders, "Depth", self.am_lfo_amplitude, 0.0, 1.0, "%", percent=True)[0]
         ## disabling sliders when AM disabled
-        self.am_lfo_widgets = [rate_slider, depth_slider]
+        self.am_lfo_widgets = [rate_slider, depth_slider] + self.am_lfo_wf_buttons
         def update_lfo_state(*_):
             state = "normal" if self.am_lfo_enabled.get() else "disabled"
             for w in self.am_lfo_widgets:
@@ -341,7 +351,7 @@ class PynthGUI(ctk.CTk):
         for i in range(3):
             oscillators.append(dict(enabled = self.osc_enabled[i].get(), waveform = self.osc_waveform[i].get(), volume = self.osc_volume[i].get(),pitch = self.osc_pitch[i].get()))
         #AM LFO
-        am_lfo = dict(enabled = self.am_lfo_enabled.get(), rate = self.am_lfo_rate.get(), amplitude = self.am_lfo_amplitude.get())
+        am_lfo = dict(enabled = self.am_lfo_enabled.get(), rate = self.am_lfo_rate.get(), amplitude = self.am_lfo_amplitude.get(), waveform=self.am_lfo_waveform.get())
         return adsr, effects, oscillators, am_lfo
     # preview audio
     def preview_audio_action(self):
