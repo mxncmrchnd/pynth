@@ -26,7 +26,7 @@ Then simply run :
 
 ```pynth``` and play around.
 
-![GUI screenshot](screenshot_ctk.png)
+![GUI screenshot](screenshot.png)
 
 
 ## Future developments
