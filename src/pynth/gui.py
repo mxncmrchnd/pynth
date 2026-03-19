@@ -6,7 +6,7 @@ from pathlib import Path
 import sounddevice as sd
 
 # import default values
-from pynth.defaults import DEFAULT_ADSR, DEFAULT_EFFECTS, DEFAULT_AM_LFO, DEFAULT_OSCILLATORS
+from pynth.defaults import DEFAULT_ADSR, DEFAULT_EFFECTS, DEFAULT_AM_LFO, DEFAULT_FM_LFO, DEFAULT_OSCILLATORS
 
 # theme setup
 ctk.set_appearance_mode("system")
@@ -41,6 +41,11 @@ class PynthGUI(ctk.CTk):
         self.am_lfo_rate = ctk.DoubleVar(value=DEFAULT_AM_LFO['rate'])
         self.am_lfo_amplitude = ctk.DoubleVar(value=DEFAULT_AM_LFO['amplitude'])
         self.am_lfo_waveform = ctk.StringVar(value=DEFAULT_AM_LFO['waveform'])
+        ## FM LFO values
+        self.fm_lfo_enabled = ctk.BooleanVar(value=DEFAULT_FM_LFO['enabled'])
+        self.fm_lfo_rate = ctk.DoubleVar(value=DEFAULT_FM_LFO['rate'])
+        self.fm_lfo_depth = ctk.DoubleVar(value=DEFAULT_FM_LFO['depth'])
+        self.fm_lfo_waveform = ctk.StringVar(value=DEFAULT_FM_LFO['waveform'])
         ## effects
         ### status
         self.delay_enabled = ctk.BooleanVar(value=False)
@@ -108,8 +113,10 @@ class PynthGUI(ctk.CTk):
         right_tabs.pack(fill="both", expand=True)
         env_tab = right_tabs.add("Envelope")
         am_tab = right_tabs.add("Amplitude Modulation")
+        fm_tab = right_tabs.add("Frequency Modulation")
         self.build_envelope(env_tab)
         self.build_am(am_tab)
+        self.build_fm(fm_tab)
         for i in range(1, 3):
             self.update_osc_state(i)
     # build oscillator window
@@ -204,6 +211,52 @@ class PynthGUI(ctk.CTk):
                 w.configure(state=state)
         self.am_lfo_enabled.trace_add("write", update_lfo_state)
         update_lfo_state()
+    # build FM tab
+    def build_fm(self, parent):
+        frame = ctk.CTkFrame(parent)
+        frame.pack(expand=True, padx=10, pady=10)
+        ctk.CTkLabel(frame, text="Frequency Modulation", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(10, 5))
+        ctk.CTkCheckBox(frame, text="Enabled", variable=self.fm_lfo_enabled).pack(pady=(0, 10))
+        content = ctk.CTkFrame(frame)
+        content.pack()
+        ## LFO waveform selection
+        wf_frame = ctk.CTkFrame(content)
+        wf_frame.pack(side="left", padx=(10, 20), pady=10)
+        ctk.CTkLabel(wf_frame, text="Waveform").pack(pady=(5, 6))
+        self.fm_lfo_wf_buttons = []
+        for text, val in [("Sine", "sine"), ("Saw", "saw"), ("Square", "square"), ("Triangle", "triangle")]:
+            b = ctk.CTkRadioButton(wf_frame, text=text, variable=self.fm_lfo_waveform, value=val)
+            b.pack(anchor="w", pady=4)
+            self.fm_lfo_wf_buttons.append(b)
+        sliders = ctk.CTkFrame(content)
+        sliders.pack(side="left", pady=10)
+        ## rate slider (beat-synced, same as AM)
+        BEAT_VALUES = [1/64, 1/32, 1/16, 1/8, 1/4, 1/2, 1.0]
+        BEAT_LABELS = ["1/64", "1/32", "1/16", "1/8", "1/4", "1/2", "1"]
+        self.fm_lfo_rate_idx = ctk.IntVar(value=BEAT_VALUES.index(min(BEAT_VALUES, key=lambda x: abs(x - self.fm_lfo_rate.get()))))
+        rate_frame = ctk.CTkFrame(sliders)
+        rate_frame.pack(pady=10)
+        ctk.CTkLabel(rate_frame, text="Rate").pack()
+        rate_slider = ctk.CTkSlider(rate_frame, from_=0, to=6, number_of_steps=6, variable=self.fm_lfo_rate_idx, width=250)
+        rate_slider.pack()
+        rate_label = ctk.CTkLabel(rate_frame, text="")
+        rate_label.pack()
+        def update_fm_rate(*_):
+            idx = int(round(self.fm_lfo_rate_idx.get()))
+            self.fm_lfo_rate.set(BEAT_VALUES[idx])
+            rate_label.configure(text=f"{BEAT_LABELS[idx]} beat")
+        self.fm_lfo_rate_idx.trace_add("write", update_fm_rate)
+        update_fm_rate()
+        ## depth slider (0 to 200 Hz)
+        depth_slider = self.labeled_slider(sliders, "Depth", self.fm_lfo_depth, 0.0, 200.0, "Hz")[0]
+        ## disabling sliders when FM disabled
+        self.fm_lfo_widgets = [rate_slider, depth_slider] + self.fm_lfo_wf_buttons
+        def update_fm_state(*_):
+            state = "normal" if self.fm_lfo_enabled.get() else "disabled"
+            for w in self.fm_lfo_widgets:
+                w.configure(state=state)
+        self.fm_lfo_enabled.trace_add("write", update_fm_state)
+        update_fm_state()
     # build the effects tabs
     def build_effects(self, parent):
         parent.grid_columnconfigure((0, 1, 2), weight=1)
@@ -352,7 +405,9 @@ class PynthGUI(ctk.CTk):
             oscillators.append(dict(enabled = self.osc_enabled[i].get(), waveform = self.osc_waveform[i].get(), volume = self.osc_volume[i].get(),pitch = self.osc_pitch[i].get()))
         #AM LFO
         am_lfo = dict(enabled = self.am_lfo_enabled.get(), rate = self.am_lfo_rate.get(), amplitude = self.am_lfo_amplitude.get(), waveform=self.am_lfo_waveform.get())
-        return adsr, effects, oscillators, am_lfo
+        #FM LFO
+        fm_lfo = dict(enabled = self.fm_lfo_enabled.get(), rate = self.fm_lfo_rate.get(), depth = self.fm_lfo_depth.get(), waveform = self.fm_lfo_waveform.get())
+        return adsr, effects, oscillators, am_lfo, fm_lfo
     # preview audio
     def preview_audio_action(self):
         ## if no MIDI has been provided
@@ -364,8 +419,8 @@ class PynthGUI(ctk.CTk):
             try:
                 from pynth.midi import midi_to_audio
                 self.status.set("Generating preview...")
-                adsr, fx, osc, am_lfo = self.get_parameters()
-                audio, _ = midi_to_audio(self.midi_path.get(), adsr = adsr, fx = fx if fx else None, osc = osc, am_lfo = am_lfo)
+                adsr, fx, osc, am_lfo, fm_lfo = self.get_parameters()
+                audio, _ = midi_to_audio(self.midi_path.get(), adsr = adsr, fx = fx if fx else None, osc = osc, am_lfo = am_lfo, fm_lfo = fm_lfo)
                 self.preview_audio = audio
                 ### change status
                 self.status.set("Playing...")
@@ -394,8 +449,8 @@ class PynthGUI(ctk.CTk):
                 ### update status
                 self.status.set("Rendering...")
                 ### export
-                adsr, fx, osc, am_lfo = self.get_parameters()
-                midi_to_flac(self.midi_path.get(), self.output_path.get(), adsr = adsr, fx = fx if fx else None, osc = osc, am_lfo = am_lfo)
+                adsr, fx, osc, am_lfo, fm_lfo = self.get_parameters()
+                midi_to_flac(self.midi_path.get(), self.output_path.get(), adsr = adsr, fx = fx if fx else None, osc = osc, am_lfo = am_lfo, fm_lfo = fm_lfo)
                 ### update status to done
                 self.status.set("Done")
             ## if an error occured

@@ -11,6 +11,12 @@ DEFAULT_AM_LFO = {
     'amplitude' : 0.5,
     'waveform' : 'sine'
 }
+DEFAULT_FM_LFO = {
+    'enabled' : False,
+    'rate' : 0.5,
+    'depth' : 50.0,
+    'waveform' : 'sine'
+}
 DEFAULT_EFFECTS = {
     'chorus' : {
         'rate' : 1.5,

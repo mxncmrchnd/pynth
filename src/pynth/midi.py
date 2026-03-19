@@ -21,7 +21,7 @@ def check_flac_output(path):
     return path
 
 # reads MIDI file to numpy audio array
-def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None, am_lfo = None) : 
+def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None, am_lfo = None, fm_lfo = None) : 
     if adsr is None:
         adsr = defaults.DEFAULT_ADSR
     ## read the file
@@ -71,12 +71,21 @@ def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None, am_l
         t = np.linspace(0, end - start, end_i - start_i, endpoint = False)
         ## mix oscillators
         wave = np.zeros(n_samples, dtype = np.float32)
+        ## pre-compute FM modulator for this note (shared across oscillators)
+        fm_mod = None
+        if fm_lfo is not None and fm_lfo['enabled']:
+            bpm = 60_000_000 / tempo
+            fm_hz = bpm / 60.0 / fm_lfo['rate']
+            fm_mod = waveform.generate_waveform(fm_hz, t, fm_lfo['waveform'])
         for o in osc : 
             if not o.get('enabled', True):
                 continue
             pitch_offset = o.get('pitch', 0)
             freq = 440.0 * 2 ** ((note-69 + pitch_offset) / 12)
-            o_wave = waveform.generate_waveform(freq, t, o.get('waveform'))
+            if fm_mod is not None:
+                o_wave = waveform.generate_waveform_fm(freq, t, fm_mod, fm_lfo['depth'], o.get('waveform'))
+            else:
+                o_wave = waveform.generate_waveform(freq, t, o.get('waveform'))
             o_wave *= o.get('volume', 1.0)
             wave += o_wave
         ## apply envelope
@@ -130,8 +139,8 @@ def audio_to_flac(audio, file_out):
     print(f"Rendered MIDI to {file_out}, containing {len(audio)} samples")
 
 ## high level function
-def midi_to_flac(midi_in, file_out, wf="sine", adsr = None, fx = None, osc = None, am_lfo = None) : 
-    audio, rendered_notes = midi_to_audio(midi_in, wf = wf, adsr = adsr, fx = fx, osc = osc, am_lfo = am_lfo)
+def midi_to_flac(midi_in, file_out, wf="sine", adsr = None, fx = None, osc = None, am_lfo = None, fm_lfo = None) : 
+    audio, rendered_notes = midi_to_audio(midi_in, wf = wf, adsr = adsr, fx = fx, osc = osc, am_lfo = am_lfo, fm_lfo = fm_lfo)
     if audio is None : 
         return
     audio_to_flac(audio, file_out)
