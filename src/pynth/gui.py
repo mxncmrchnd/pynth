@@ -112,8 +112,8 @@ class PynthGUI(ctk.CTk):
         right_tabs = ctk.CTkTabview(right_frame)
         right_tabs.pack(fill="both", expand=True)
         env_tab = right_tabs.add("Envelope")
-        am_tab = right_tabs.add("Amplitude Modulation")
-        fm_tab = right_tabs.add("Frequency Modulation")
+        am_tab = right_tabs.add("AM")
+        fm_tab = right_tabs.add("FM")
         self.build_envelope(env_tab)
         self.build_am(am_tab)
         self.build_fm(fm_tab)
@@ -202,7 +202,7 @@ class PynthGUI(ctk.CTk):
         self.am_lfo_rate_idx.trace_add("write", update_rate)
         update_rate()
         ## depth slider
-        depth_slider = self.labeled_slider(sliders, "Depth", self.am_lfo_amplitude, 0.0, 1.0, "%", percent=True)[0]
+        depth_slider = self.labeled_slider(sliders, "Depth", self.am_lfo_amplitude, 0.1, 1.0, "%", percent=True)[0]
         ## disabling sliders when AM disabled
         self.am_lfo_widgets = [rate_slider, depth_slider] + self.am_lfo_wf_buttons
         def update_lfo_state(*_):
@@ -248,7 +248,7 @@ class PynthGUI(ctk.CTk):
         self.fm_lfo_rate_idx.trace_add("write", update_fm_rate)
         update_fm_rate()
         ## depth slider (0 to 200 Hz)
-        depth_slider = self.labeled_slider(sliders, "Depth", self.fm_lfo_depth, 0.0, 200.0, "Hz")[0]
+        depth_slider = self.labeled_slider(sliders, "Depth", self.fm_lfo_depth, 0.1, 200.0, "Hz")[0]
         ## disabling sliders when FM disabled
         self.fm_lfo_widgets = [rate_slider, depth_slider] + self.fm_lfo_wf_buttons
         def update_fm_state(*_):
