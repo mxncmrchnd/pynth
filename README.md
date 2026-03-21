@@ -13,9 +13,10 @@ by Maxence Marchand, 2026
 - Reading MIDI files (in single track mode)
 - Choice of waveform : sine, saw, square or triangle
 - ADSR envelope modification
+- Multiple oscillators, with independent waveform, volume and pitch controls
 - Effects : chorus, delay and reverb
 - Amplitude and frequency modulation
-- Multiple oscillators, with independant waveform, volume and pitch controls
+- Highpass and lowpass filters
 - Audio preview
 - Export as FLAC
 
@@ -29,11 +30,9 @@ Then simply run :
 
 `pynth` and play around.
 
-![GUI screenshot](screenshot.png)
-
-## Future developments
-
-- Filters (lowpass/highpass)
+![Oscillators](screenshot1.png)
+![Effects](screenshot2.png)
+![Filters](screenshot3.png)
 
 ## Versions changelog
 
