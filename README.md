@@ -41,6 +41,7 @@ Then simply run :
 - 1.2 : reworked GUI : replaced previous tkinter GUI with CustomTkinter
 - 1.3 : added amplitude modulation
 - 1.4 : added frequency modulation
+- 1.5 : added highpass/lowpass filters
 
 ## Dependencies
 
