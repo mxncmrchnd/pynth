@@ -54,5 +54,9 @@ DEFAULT_OSCILLATORS = [
         'pitch' : -24
     }
 ]
+DEFAULT_FILTERS = {
+    'lowpass': {'enabled': False, 'cutoff': 5000.0, 'order': 4},
+    'highpass': {'enabled': False, 'cutoff': 200.0, 'order': 4}
+}
 DEFAULT_TEMPO = 500000 # 120bpm, in microseconds per beat
 SAMPLE_RATE = 44100

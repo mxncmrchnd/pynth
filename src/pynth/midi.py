@@ -4,7 +4,7 @@ import numpy as np
 import soundfile as sf
 import os
 import argparse
-from . import defaults, effects, envelope, waveform
+from . import defaults, effects, envelope, waveform, filter as flt
 
 # checks if MIDI input path is correct
 def check_midi_input_path(path):
@@ -21,7 +21,7 @@ def check_flac_output(path):
     return path
 
 # reads MIDI file to numpy audio array
-def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None, am_lfo = None, fm_lfo = None) : 
+def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None, am_lfo = None, fm_lfo = None, filters = None) : 
     if adsr is None:
         adsr = defaults.DEFAULT_ADSR
     ## read the file
@@ -128,6 +128,22 @@ def midi_to_audio(midi_in, wf = "sine", adsr = None, fx = None, osc = None, am_l
     # normalize audio after effects
     peak = np.max(np.abs(audio))
     if peak > 0 : audio /= peak
+    # applying the lowpass/highpass
+    lp = filters.get('lowpass',  {})
+    hp = filters.get('highpass', {})
+    if hp.get('enabled') and lp.get('enabled'):
+        if hp['cutoff'] >= lp['cutoff']:  # degenerate — skip both
+            pass
+        else:
+            audio = flt.apply_highpass(audio, hp['cutoff'], int(hp['order']))
+            audio = flt.apply_lowpass(audio,  lp['cutoff'], int(lp['order']))
+    else:
+        if hp.get('enabled'):
+            audio = flt.apply_highpass(audio, hp['cutoff'], int(hp['order']))
+        if lp.get('enabled'):
+            audio = flt.apply_lowpass(audio,  lp['cutoff'], int(lp['order']))
+
+    # return the final audio
     return audio, rendered_notes
 
 ## write to file
@@ -139,8 +155,8 @@ def audio_to_flac(audio, file_out):
     print(f"Rendered MIDI to {file_out}, containing {len(audio)} samples")
 
 ## high level function
-def midi_to_flac(midi_in, file_out, wf="sine", adsr = None, fx = None, osc = None, am_lfo = None, fm_lfo = None) : 
-    audio, rendered_notes = midi_to_audio(midi_in, wf = wf, adsr = adsr, fx = fx, osc = osc, am_lfo = am_lfo, fm_lfo = fm_lfo)
+def midi_to_flac(midi_in, file_out, wf="sine", adsr = None, fx = None, osc = None, am_lfo = None, fm_lfo = None, filters = None) : 
+    audio, rendered_notes = midi_to_audio(midi_in, wf = wf, adsr = adsr, fx = fx, osc = osc, am_lfo = am_lfo, fm_lfo = fm_lfo, filters = filters)
     if audio is None : 
         return
     audio_to_flac(audio, file_out)
